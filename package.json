@@ -1,5 +1,5 @@
 {
-  "name": "node-epeg",
+  "name": "epeg",
   "version": "0.5.0",
   "description": "Node bindings for the Epeg library",
   "main": "index.js",
@@ -14,8 +14,10 @@
     "node",
     "epeg",
     "jpeg",
-    "resize"
+    "resize",
+    "crop"
   ],
+  "gypfile": true,
   "author": "victor.goya@af83.com",
   "license": "BSD",
   "readmeFilename": "README.md",
