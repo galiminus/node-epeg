@@ -7,6 +7,8 @@
 
 using namespace v8;
 
+#define DEFAULT_QUALITY 85;
+
 Handle<Value> Resize(const Arguments& args) {
     HandleScope  scope;
     Epeg_Image * im;
@@ -29,12 +31,18 @@ Handle<Value> Resize(const Arguments& args) {
     int width = args[2]->NumberValue();
     int height = args[3]->NumberValue();
 
+    int quality = DEFAULT_QUALITY;
+    if (args[4]->IsNumber())
+        quality = args[4]->NumberValue();
+
     im = epeg_file_open(*input_file);
     if (!im) {
         ThrowException(Exception::TypeError(String::New("Cannot open input file")));
         return scope.Close(Undefined());
     }
     epeg_file_output_set(im, *output_file);
+
+    epeg_quality_set(im, quality);
 
     epeg_decode_size_set(im, width, height);
     epeg_encode(im);
@@ -69,12 +77,18 @@ Handle<Value> Crop(const Arguments& args) {
     int width = args[4]->NumberValue();
     int height = args[5]->NumberValue();
 
+    int quality = DEFAULT_QUALITY;
+    if (args[6]->IsNumber())
+        quality = args[6]->NumberValue();
+
     im = epeg_file_open(*input_file);
     if (!im) {
         ThrowException(Exception::TypeError(String::New("Cannot open input file")));
         return scope.Close(Undefined());
     }
     epeg_file_output_set(im, *output_file);
+
+    epeg_quality_set(im, quality);
 
     epeg_decode_bounds_set(im, x, y, width, height);
     epeg_trim(im);
