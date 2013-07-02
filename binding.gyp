@@ -1,12 +1,14 @@
 {
-  'conditions': [
-  ],
   'targets': [
     {
       'target_name': 'epeg',
       'sources': [
-        'src/node_epeg.cpp'
+        'src/epeg.cc',
+        'src/epeg_main.c'
       ],
+      'libraries': [
+        '-ljpeg'
+      ]
     }
   ]
 }
