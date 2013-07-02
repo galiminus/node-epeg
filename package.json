@@ -1,0 +1,26 @@
+{
+  "name": "node-epeg",
+  "version": "0.0.0",
+  "description": "Node bindings for the Epeg library",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/phorque/node-epeg.git"
+  },
+  "keywords": [
+    "node",
+    "epeg",
+    "jpeg",
+    "resize"
+  ],
+  "author": "victor.goya@af83.com",
+  "license": "BSD",
+  "readmeFilename": "README.md",
+  "gitHead": "45620586e2df2e9cd3676342043eaf836c746943",
+  "bugs": {
+    "url": "https://github.com/phorque/node-epeg/issues"
+  }
+}
