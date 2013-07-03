@@ -4,13 +4,13 @@ Install:
 npm install epeg
 ```
 
-Resize:
+Downsize:
 
 ```
 var epeg = require("epeg");
 
 image = new epeg.Image({path: "./test.jpg"}))
-image.resize(100, 100).saveTo("./output.jpg");
+image.downsize(100, 100).saveTo("./output.jpg");
 ```
 
 Crop:
@@ -28,5 +28,5 @@ Both can take an optional 'quality' parameter between 1 and 100 (default is 85):
 var epeg = require("epeg");
 
 image = new epeg.Image({path: "./test.jpg"}))
-image.resize(100, 100, 50).saveTo("./ugly.jpg");
+image.downsize(100, 100, 50).saveTo("./ugly.jpg");
 ```
