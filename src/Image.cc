@@ -37,7 +37,7 @@ Image::Initialize(Handle<Object> target)
   // Prototype                                                                                                                                 
   Local<ObjectTemplate> proto = constructor->PrototypeTemplate();
 
-  NODE_SET_PROTOTYPE_METHOD(constructor, "resize", Resize);
+  NODE_SET_PROTOTYPE_METHOD(constructor, "downsize", Downsize);
   NODE_SET_PROTOTYPE_METHOD(constructor, "crop", Crop);
   // NODE_SET_PROTOTYPE_METHOD(constructor, "save", Save);
   NODE_SET_PROTOTYPE_METHOD(constructor, "saveTo", SaveTo);
@@ -85,6 +85,7 @@ Image::New(const Arguments &args)
       ThrowException(Exception::TypeError(String::New("Cannot create image")));
       return scope.Close(Undefined());
     }
+    epeg_size_get(image->im, &(image->width), &(image->height));
   }
   return scope.Close(args.This());
 }
@@ -103,20 +104,27 @@ Image::SaveTo(const Arguments &args)
   String::AsciiValue output_file(args[0]->ToString());
 
   epeg_file_output_set(image->im, *output_file);
-  epeg_encode(image->im);
-  epeg_close(image->im);
-  image->im = NULL;
+
+  if ((image->scaled && epeg_encode(image->im)) != 0 ||
+      (image->croped && epeg_trim(image->im)) != 0) {
+    ThrowException(Exception::TypeError(String::New("Could not save to file")));
+    return scope.Close(Undefined());
+  }
 
   return scope.Close(args.This());
 }
 
 Handle<Value>
-Image::Resize(const Arguments& args)
+Image::Downsize(const Arguments& args)
 {
     HandleScope  scope;
 
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
+    if (image->scaled || image->croped) {
+      ThrowException(Exception::TypeError(String::New("Image already updated")));
+      return scope.Close(Undefined());
+    }
     if (args.Length() < 2) {
       ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
       return scope.Close(Undefined());
@@ -129,6 +137,11 @@ Image::Resize(const Arguments& args)
 
     int width = args[0]->NumberValue();
     int height = args[1]->NumberValue();
+    if (width < 0 || width > image->width ||
+        height < 0 || height > image->height) {
+      ThrowException(Exception::TypeError(String::New("Wrong arguments")));
+      return scope.Close(Undefined());
+    }
 
     int quality = DEFAULT_QUALITY;
     if (args[2]->IsNumber())
@@ -136,6 +149,8 @@ Image::Resize(const Arguments& args)
 
     epeg_quality_set(image->im, quality);
     epeg_decode_size_set(image->im, width, height);
+
+    image->scaled = true;
 
     return scope.Close(args.This());
 }
@@ -147,6 +162,10 @@ Image::Crop(const Arguments& args)
 
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
+    if (image->scaled || image->croped) {
+      ThrowException(Exception::TypeError(String::New("Image already updated")));
+      return scope.Close(Undefined());
+    }
     if (args.Length() < 4) {
       ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
       return scope.Close(Undefined());
@@ -163,16 +182,22 @@ Image::Crop(const Arguments& args)
     int x = args[0]->NumberValue();
     int y = args[1]->NumberValue();
 
-    int width = args[0]->NumberValue();
-    int height = args[1]->NumberValue();
+    int width = args[2]->NumberValue();
+    int height = args[3]->NumberValue();
+
+    if (x < 0 || y < 0 || width < 0 || height < 0 ||
+        (x + width) > image->width || (y + height) > image->height) {
+      ThrowException(Exception::TypeError(String::New("Wrong arguments")));
+      return scope.Close(Undefined());
+    }
 
     int quality = DEFAULT_QUALITY;
     if (args[4]->IsNumber())
         quality = args[4]->NumberValue();
 
     epeg_decode_bounds_set(image->im, x, y, width, height);
-    epeg_trim(image->im);
 
+    image->croped = true;
     return scope.Close(args.This());
 }
 
@@ -180,20 +205,16 @@ Handle<Value>
 Image::GetWidth(Local<String>, const  AccessorInfo &info)
 {
   HandleScope scope;
-  int width;
 
   Image * image = ObjectWrap::Unwrap<Image>(info.This());
-  epeg_size_get(image->im, &width, NULL);
-  return scope.Close(Number::New(width));
+  return scope.Close(Number::New(image->width));
 }
 
 Handle<Value>
 Image::GetHeight(Local<String>, const  AccessorInfo &info)
 {
   HandleScope scope;
-  int height;
 
   Image * image = ObjectWrap::Unwrap<Image>(info.This());
-  epeg_size_get(image->im, NULL, &height);
-  return scope.Close(Number::New(height));
+  return scope.Close(Number::New(image->height));
 }

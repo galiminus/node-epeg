@@ -16,7 +16,7 @@ class Image: public node::ObjectWrap {
   static void Initialize(Handle<Object>);
 
   static Handle<Value> New(const Arguments &args);
-  static Handle<Value> Resize(const Arguments &args);
+  static Handle<Value> Downsize(const Arguments &args);
   static Handle<Value> Crop(const Arguments &args);
   //  static Handle<Value> Save(const Arguments &args);
   static Handle<Value> SaveTo(const Arguments &args);
@@ -29,6 +29,11 @@ class Image: public node::ObjectWrap {
  private:
   ~Image();
   Epeg_Image *  im;
+  int           width;
+  int           height;
+
+  bool          scaled = false;
+  bool          croped = false;
 };
 
 #endif /* __EPEG_IMAGE_H__ */
