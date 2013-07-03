@@ -1,3 +1,9 @@
+Install:
+
+```
+npm install epeg
+```
+
 Resize:
 
 ```
