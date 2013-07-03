@@ -21,8 +21,8 @@ class Image: public node::ObjectWrap {
   //  static Handle<Value> Save(const Arguments &args);
   static Handle<Value> SaveTo(const Arguments &args);
 
-  //  static Handle<Value> GetWidth(Local<String> prop, const AccessorInfo &info);
-  //  static Handle<Value> GetHeight(Local<String> prop, const AccessorInfo &info);
+  static Handle<Value> GetWidth(Local<String> prop, const AccessorInfo &info);
+  static Handle<Value> GetHeight(Local<String> prop, const AccessorInfo &info);
 
   Image();
 

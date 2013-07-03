@@ -42,8 +42,8 @@ Image::Initialize(Handle<Object> target)
   // NODE_SET_PROTOTYPE_METHOD(constructor, "save", Save);
   NODE_SET_PROTOTYPE_METHOD(constructor, "saveTo", SaveTo);
 
-  //  proto->SetAccessor(String::NewSymbol("width"), GetWidth);
-  //  proto->SetAccessor(String::NewSymbol("height"), GetHeight);
+  proto->SetAccessor(String::NewSymbol("width"), GetWidth);
+  proto->SetAccessor(String::NewSymbol("height"), GetHeight);
 
   target->Set(String::NewSymbol("Image"), constructor->GetFunction());
 }
@@ -174,4 +174,26 @@ Image::Crop(const Arguments& args)
     epeg_trim(image->im);
 
     return scope.Close(args.This());
+}
+
+Handle<Value>
+Image::GetWidth(Local<String>, const  AccessorInfo &info)
+{
+  HandleScope scope;
+  int width;
+
+  Image * image = ObjectWrap::Unwrap<Image>(info.This());
+  epeg_size_get(image->im, &width, NULL);
+  return scope.Close(Number::New(width));
+}
+
+Handle<Value>
+Image::GetHeight(Local<String>, const  AccessorInfo &info)
+{
+  HandleScope scope;
+  int height;
+
+  Image * image = ObjectWrap::Unwrap<Image>(info.This());
+  epeg_size_get(image->im, NULL, &height);
+  return scope.Close(Number::New(height));
 }
