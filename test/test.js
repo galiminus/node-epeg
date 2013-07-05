@@ -3,7 +3,16 @@ var expect = require('expect.js');
 var fs = require('fs');
 var epeg = require('../index');
 
+var output_path = "test/fixtures/output.jpg";
+
 describe('epeg.Image', function(){
+    beforeEach(function(done){
+        if (fs.existsSync(output_path)) {
+            fs.unlinkSync(output_path);
+        }
+        done();
+    });
+
     describe('#new()', function(){
         it('should throw an exception when parameters are wrong', function(){
             expect(function() { new epeg.Image(); }).to.throwException();
@@ -40,9 +49,9 @@ describe('epeg.Image', function(){
     describe("#downsize", function() {
         it('downsize image', function(){
             var image = new epeg.Image({path: "test/fixtures/test.jpg"});
-            image.downsize(100, 100).saveTo('test/fixtures/output.jpg');
+            image.downsize(100, 100).saveTo(output_path);
 
-            var output = new epeg.Image({path: "test/fixtures/output.jpg"});
+            var output = new epeg.Image({path: output_path});
             assert.equal(output.width, 100);
             assert.equal(output.height, 100);
         });
@@ -72,9 +81,9 @@ describe('epeg.Image', function(){
     describe("#crop", function() {
         it('crop image', function(){
             var image = new epeg.Image({path: "test/fixtures/test.jpg"});
-            image.crop(100, 100, 50, 50).saveTo('test/fixtures/output.jpg');
+            image.crop(100, 100, 50, 50).saveTo(output_path);
 
-            var output = new epeg.Image({path: "test/fixtures/output.jpg"});
+            var output = new epeg.Image({path: output_path});
             assert.equal(output.width, 50);
             assert.equal(output.height, 50);
         });
@@ -105,16 +114,23 @@ describe('epeg.Image', function(){
     });
     describe("#saveTo", function() {
         it('save to a file', function() {
-            fs.unlink('test/fixtures/output.jpg', function() {
-                var image = new epeg.Image({path: "test/fixtures/test.jpg"});
-                image.saveTo('test/fixtures/output.jpg');
-            });
+            var image = new epeg.Image({path: "test/fixtures/test.jpg"});
+            image.downsize(500, 500).saveTo(output_path);
+
+            var output = new epeg.Image({path: output_path});
+            assert.equal(output.width, 500);
+            assert.equal(output.height, 500);
         });
-        it('should throw an exception if the file is invalid', function() {
-            fs.unlink('test/fixtures/output.jpg', function() {
-                var image = new epeg.Image({path: "test/fixtures/test.jpg"});
-                image.saveTo('/noexistent/output.jpg');
-            });
+    });
+    describe("#process", function() {
+        it('save to a buffer', function() {
+            var image = new epeg.Image({path: "test/fixtures/test.jpg"});
+            buffer = image.downsize(500, 500).process();
+            fs.writeFileSync(output_path, buffer);
+
+            var output = new epeg.Image({path: output_path});
+            assert.equal(output.width, 500);
+            assert.equal(output.height, 500);
         });
     });
 })

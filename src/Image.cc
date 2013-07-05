@@ -39,7 +39,7 @@ Image::Initialize(Handle<Object> target)
 
   NODE_SET_PROTOTYPE_METHOD(constructor, "downsize", Downsize);
   NODE_SET_PROTOTYPE_METHOD(constructor, "crop", Crop);
-  // NODE_SET_PROTOTYPE_METHOD(constructor, "save", Save);
+  NODE_SET_PROTOTYPE_METHOD(constructor, "process", Process);
   NODE_SET_PROTOTYPE_METHOD(constructor, "saveTo", SaveTo);
 
   proto->SetAccessor(String::NewSymbol("width"), GetWidth);
@@ -91,11 +91,45 @@ Image::New(const Arguments &args)
 }
 
 Handle<Value>
+Image::Process(const Arguments &args)
+{
+  HandleScope scope;
+
+  unsigned char *       data;
+  int                   size;
+
+  Image * image = ObjectWrap::Unwrap<Image>(args.This());
+  if (!image->im) {
+    ThrowException(Exception::TypeError(String::New("Image already updated")));
+    return scope.Close(Undefined());
+  }
+
+  epeg_memory_output_set(image->im, &data, &size);
+
+  if (image->ProcessInternal() != 0) {
+    ThrowException(Exception::TypeError(String::New("Could not save to buffer")));
+    return scope.Close(Undefined());
+  }
+
+  epeg_close(image->im);
+  image->im = NULL;
+
+  node::Buffer * buffer = node::Buffer::New(size);
+  memcpy(node::Buffer::Data(buffer), data, size);
+
+  return buffer->handle_;
+}
+
+Handle<Value>
 Image::SaveTo(const Arguments &args)
 {
   HandleScope scope;
 
   Image * image = ObjectWrap::Unwrap<Image>(args.This());
+  if (!image->im) {
+    ThrowException(Exception::TypeError(String::New("Image already updated")));
+    return scope.Close(Undefined());
+  }
 
   if (!args[0]->IsString()) {
     ThrowException(Exception::TypeError(String::New("Wrong arguments")));
@@ -105,13 +139,15 @@ Image::SaveTo(const Arguments &args)
 
   epeg_file_output_set(image->im, *output_file);
 
-  if ((image->scaled && epeg_encode(image->im)) != 0 ||
-      (image->croped && epeg_trim(image->im)) != 0) {
+  if (image->ProcessInternal() != 0) {
     ThrowException(Exception::TypeError(String::New("Could not save to file")));
     return scope.Close(Undefined());
   }
 
-  return scope.Close(args.This());
+  epeg_close(image->im);
+  image->im = NULL;
+
+  return scope.Close(Undefined());
 }
 
 Handle<Value>
@@ -217,4 +253,15 @@ Image::GetHeight(Local<String>, const  AccessorInfo &info)
 
   Image * image = ObjectWrap::Unwrap<Image>(info.This());
   return scope.Close(Number::New(image->height));
+}
+
+int
+Image::ProcessInternal()
+{
+  if (scaled) {
+    return epeg_encode(im);
+  }
+  else if (croped) {
+    return epeg_trim(im);
+  }
 }

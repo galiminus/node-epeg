@@ -30,3 +30,16 @@ var epeg = require("epeg");
 image = new epeg.Image({path: "./test.jpg"}))
 image.downsize(100, 100, 50).saveTo("./ugly.jpg");
 ```
+
+You can also use buffers as I/O:
+
+```
+var fs = require("fs");
+var epeg = require("epeg");
+
+fs.readFile("./test.jpg", function(err, data) {
+  var image = new epeg.Image({data: data});
+  buffer = image.downsize(100, 100).process();
+  fs.writeFileSync("./output.jpg", buffer);
+}
+```

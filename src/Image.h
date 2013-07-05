@@ -18,7 +18,7 @@ class Image: public node::ObjectWrap {
   static Handle<Value> New(const Arguments &args);
   static Handle<Value> Downsize(const Arguments &args);
   static Handle<Value> Crop(const Arguments &args);
-  //  static Handle<Value> Save(const Arguments &args);
+  static Handle<Value> Process(const Arguments &args);
   static Handle<Value> SaveTo(const Arguments &args);
 
   static Handle<Value> GetWidth(Local<String> prop, const AccessorInfo &info);
@@ -28,6 +28,8 @@ class Image: public node::ObjectWrap {
 
  private:
   ~Image();
+  int   ProcessInternal();
+
   Epeg_Image *  im;
   int           width;
   int           height;

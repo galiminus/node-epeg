@@ -1,6 +1,6 @@
 {
   "name": "epeg",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Node bindings for the Epeg library",
   "main": "index.js",
   "scripts": {
