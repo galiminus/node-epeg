@@ -166,13 +166,13 @@ Image::Downsize(const Arguments& args)
       return scope.Close(Undefined());
     }
 
-    if (!args[0]->IsNumber() || !args[1]->IsNumber()) {
+    if (!args[0]->IsInt32() || !args[1]->IsInt32()) {
       ThrowException(Exception::TypeError(String::New("Wrong arguments")));
       return scope.Close(Undefined());
     }
 
-    int width = args[0]->NumberValue();
-    int height = args[1]->NumberValue();
+    int width = args[0]->Int32Value();
+    int height = args[1]->Int32Value();
     if (width < 0 || width > image->width ||
         height < 0 || height > image->height) {
       ThrowException(Exception::TypeError(String::New("Wrong arguments")));
@@ -180,8 +180,8 @@ Image::Downsize(const Arguments& args)
     }
 
     int quality = DEFAULT_QUALITY;
-    if (args[2]->IsNumber())
-        quality = args[2]->NumberValue();
+    if (args[2]->IsInt32())
+        quality = args[2]->Int32Value();
 
     epeg_quality_set(image->im, quality);
     epeg_decode_size_set(image->im, width, height);
@@ -207,19 +207,19 @@ Image::Crop(const Arguments& args)
       return scope.Close(Undefined());
     }
 
-    if (!args[0]->IsNumber() ||
-        !args[1]->IsNumber() ||
-        !args[2]->IsNumber() ||
-        !args[3]->IsNumber()) {
+    if (!args[0]->IsInt32() ||
+        !args[1]->IsInt32() ||
+        !args[2]->IsInt32() ||
+        !args[3]->IsInt32()) {
       ThrowException(Exception::TypeError(String::New("Wrong arguments")));
       return scope.Close(Undefined());
     }
 
-    int x = args[0]->NumberValue();
-    int y = args[1]->NumberValue();
+    int x = args[0]->Int32Value();
+    int y = args[1]->Int32Value();
 
-    int width = args[2]->NumberValue();
-    int height = args[3]->NumberValue();
+    int width = args[2]->Int32Value();
+    int height = args[3]->Int32Value();
 
     if (x < 0 || y < 0 || width < 0 || height < 0 ||
         (x + width) > image->width || (y + height) > image->height) {
@@ -228,8 +228,8 @@ Image::Crop(const Arguments& args)
     }
 
     int quality = DEFAULT_QUALITY;
-    if (args[4]->IsNumber())
-        quality = args[4]->NumberValue();
+    if (args[4]->IsInt32())
+        quality = args[4]->Int32Value();
 
     epeg_quality_set(image->im, quality);
     epeg_decode_bounds_set(image->im, x, y, width, height);
