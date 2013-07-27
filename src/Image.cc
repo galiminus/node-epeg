@@ -231,6 +231,7 @@ Image::Crop(const Arguments& args)
     if (args[4]->IsNumber())
         quality = args[4]->NumberValue();
 
+    epeg_quality_set(image->im, quality);
     epeg_decode_bounds_set(image->im, x, y, width, height);
 
     image->croped = true;
