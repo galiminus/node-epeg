@@ -157,10 +157,10 @@ Image::Downsize(const Arguments& args)
 
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
-    if (image->scaled || image->croped) {
-      ThrowException(Exception::TypeError(String::New("Image already updated")));
-      return scope.Close(Undefined());
-    }
+    // if (image->scaled || image->croped) {
+    //   ThrowException(Exception::TypeError(String::New("Image already updated")));
+    //   return scope.Close(Undefined());
+    // }
     if (args.Length() < 2) {
       ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
       return scope.Close(Undefined());
