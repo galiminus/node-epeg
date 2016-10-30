@@ -25,16 +25,16 @@ Image::~Image()
 }
 
 void
-Image::Initialize(Handle<Object> target)
+Image::Initialize(Local<Object> target)
 {
-  HandleScope  scope;
+  Isolate* isolate = target->GetIsolate();
 
-  // Constructor                                                                                                                               
-  constructor = Persistent<FunctionTemplate>::New(FunctionTemplate::New(Image::New));
+  // Constructor
+  Local<FunctionTemplate> constructor = FunctionTemplate::New(isolate, Image::New);
   constructor->InstanceTemplate()->SetInternalFieldCount(1);
-  constructor->SetClassName(String::NewSymbol("Image"));
+  constructor->SetClassName(String::NewFromUtf8(isolate, "Image"));
 
-  // Prototype                                                                                                                                 
+  // Prototype
   Local<ObjectTemplate> proto = constructor->PrototypeTemplate();
 
   NODE_SET_PROTOTYPE_METHOD(constructor, "downsize", Downsize);
@@ -42,32 +42,38 @@ Image::Initialize(Handle<Object> target)
   NODE_SET_PROTOTYPE_METHOD(constructor, "process", Process);
   NODE_SET_PROTOTYPE_METHOD(constructor, "saveTo", SaveTo);
 
-  proto->SetAccessor(String::NewSymbol("width"), GetWidth);
-  proto->SetAccessor(String::NewSymbol("height"), GetHeight);
+  proto->SetAccessor(String::NewFromUtf8(isolate, "width"), GetWidth);
+  proto->SetAccessor(String::NewFromUtf8(isolate, "height"), GetHeight);
 
-  target->Set(String::NewSymbol("Image"), constructor->GetFunction());
+  Local<Context> context = isolate->GetCurrentContext();
+
+  target->Set(
+      context,
+      String::NewFromUtf8(isolate, "Image"),
+      constructor->GetFunction(context).ToLocalChecked()
+  );
 }
 
-Handle<Value>
-Image::New(const Arguments &args)
+void Image::New(const FunctionCallbackInfo<Value> &args)
 {
-  HandleScope  scope;
+  Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
 
   Image * image = new Image();
   image->Wrap(args.This());
 
   if (args.Length() < 1) {
-    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-    return scope.Close(Undefined());
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+    return;
   }
 
   if (args[0]->IsObject()) {
-    Handle<Object> object = Handle<Object>::Cast(args[0]);
-    Handle<Value> pathValue = object->Get(String::New("path"));
-    Handle<Value> dataValue = object->Get(String::New("data"));
+    Local<Object> object = Local<Object>::Cast(args[0]);
+    Local<Value> pathValue = object->Get(context, String::NewFromUtf8(isolate, "path")).ToLocalChecked();
+    Local<Value> dataValue = object->Get(context, String::NewFromUtf8(isolate, "data")).ToLocalChecked();
 
     if (pathValue->IsString()) {
-      String::AsciiValue path(pathValue);
+      String::Utf8Value path(pathValue);
       image->im = epeg_file_open(*path);
     }
     else if (node::Buffer::HasInstance(dataValue)) {
@@ -77,106 +83,104 @@ Image::New(const Arguments &args)
       image->im = epeg_memory_open(buffer, size);
     }
     else {
-      ThrowException(Exception::TypeError(String::New("Wrong arguments")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      return;
     }
 
     if (!image->im) {
-      ThrowException(Exception::TypeError(String::New("Cannot create image")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Cannot create image")));
+      return;
     }
     epeg_size_get(image->im, &(image->width), &(image->height));
   }
-  return scope.Close(args.This());
 }
 
-Handle<Value>
-Image::Process(const Arguments &args)
+void
+Image::Process(const FunctionCallbackInfo<Value> &args)
 {
-  HandleScope scope;
+  Isolate* isolate = args.GetIsolate();
 
   unsigned char *       data;
   int                   size;
 
   Image * image = ObjectWrap::Unwrap<Image>(args.This());
   if (!image->im) {
-    ThrowException(Exception::TypeError(String::New("Image already updated")));
-    return scope.Close(Undefined());
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
+    return;
   }
 
   epeg_memory_output_set(image->im, &data, &size);
 
   if (image->ProcessInternal() != 0) {
-    ThrowException(Exception::TypeError(String::New("Could not save to buffer")));
-    return scope.Close(Undefined());
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Could not save to buffer")));
+    return;
   }
 
   epeg_close(image->im);
   image->im = NULL;
 
-  node::Buffer * buffer = node::Buffer::New(size);
+  Local<Value> buffer = node::Buffer::New(isolate, size).ToLocalChecked();
   memcpy(node::Buffer::Data(buffer), data, size);
 
-  return buffer->handle_;
+  args.GetReturnValue().Set(buffer);
 }
 
-Handle<Value>
-Image::SaveTo(const Arguments &args)
+void
+Image::SaveTo(const FunctionCallbackInfo<Value> &args)
 {
-  HandleScope scope;
+  Isolate* isolate = args.GetIsolate();
 
   Image * image = ObjectWrap::Unwrap<Image>(args.This());
   if (!image->im) {
-    ThrowException(Exception::TypeError(String::New("Image already updated")));
-    return scope.Close(Undefined());
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
+    return;
   }
 
   if (!args[0]->IsString()) {
-    ThrowException(Exception::TypeError(String::New("Wrong arguments")));
-    return scope.Close(Undefined());
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+    return;
   }
-  String::AsciiValue output_file(args[0]->ToString());
+  String::Utf8Value output_file(args[0]->ToString());
 
   epeg_file_output_set(image->im, *output_file);
 
   if (image->ProcessInternal() != 0) {
-    ThrowException(Exception::TypeError(String::New("Could not save to file")));
-    return scope.Close(Undefined());
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Could not save to file")));
+    return;
   }
 
   epeg_close(image->im);
   image->im = NULL;
 
-  return scope.Close(Undefined());
+  return;
 }
 
-Handle<Value>
-Image::Downsize(const Arguments& args)
+void
+Image::Downsize(const FunctionCallbackInfo<Value>& args)
 {
-    HandleScope  scope;
-
+    Isolate* isolate = args.GetIsolate();
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
     // if (image->scaled || image->croped) {
-    //   ThrowException(Exception::TypeError(String::New("Image already updated")));
-    //   return scope.Close(Undefined());
+    //   ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
+    //   return;
     // }
     if (args.Length() < 2) {
-      ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+      return;
     }
 
     if (!args[0]->IsInt32() || !args[1]->IsInt32()) {
-      ThrowException(Exception::TypeError(String::New("Wrong arguments")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      return;
     }
 
     int width = args[0]->Int32Value();
     int height = args[1]->Int32Value();
     if (width < 0 || width > image->width ||
         height < 0 || height > image->height) {
-      ThrowException(Exception::TypeError(String::New("Wrong arguments")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      return;
     }
 
     int quality = DEFAULT_QUALITY;
@@ -188,31 +192,31 @@ Image::Downsize(const Arguments& args)
 
     image->scaled = true;
 
-    return scope.Close(args.This());
+    args.GetReturnValue().Set(args.This());
 }
 
-Handle<Value>
-Image::Crop(const Arguments& args)
+void
+Image::Crop(const FunctionCallbackInfo<Value>& args)
 {
-    HandleScope  scope;
+    Isolate* isolate = args.GetIsolate();
 
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
     if (image->scaled || image->croped) {
-      ThrowException(Exception::TypeError(String::New("Image already updated")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
+      return;
     }
     if (args.Length() < 4) {
-      ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+      return;
     }
 
     if (!args[0]->IsInt32() ||
         !args[1]->IsInt32() ||
         !args[2]->IsInt32() ||
         !args[3]->IsInt32()) {
-      ThrowException(Exception::TypeError(String::New("Wrong arguments")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      return;
     }
 
     int x = args[0]->Int32Value();
@@ -223,8 +227,8 @@ Image::Crop(const Arguments& args)
 
     if (x < 0 || y < 0 || width < 0 || height < 0 ||
         (x + width) > image->width || (y + height) > image->height) {
-      ThrowException(Exception::TypeError(String::New("Wrong arguments")));
-      return scope.Close(Undefined());
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      return;
     }
 
     int quality = DEFAULT_QUALITY;
@@ -235,25 +239,25 @@ Image::Crop(const Arguments& args)
     epeg_decode_bounds_set(image->im, x, y, width, height);
 
     image->croped = true;
-    return scope.Close(args.This());
+    args.GetReturnValue().Set(args.This());
 }
 
-Handle<Value>
-Image::GetWidth(Local<String>, const  AccessorInfo &info)
+void
+Image::GetWidth(Local<String>, const PropertyCallbackInfo<Value> &info)
 {
-  HandleScope scope;
+  Isolate* isolate = info.GetIsolate();
 
   Image * image = ObjectWrap::Unwrap<Image>(info.This());
-  return scope.Close(Number::New(image->width));
+  info.GetReturnValue().Set(Number::New(isolate, image->width));
 }
 
-Handle<Value>
-Image::GetHeight(Local<String>, const  AccessorInfo &info)
+void
+Image::GetHeight(Local<String>, const PropertyCallbackInfo<Value> &info)
 {
-  HandleScope scope;
+  Isolate* isolate = info.GetIsolate();
 
   Image * image = ObjectWrap::Unwrap<Image>(info.This());
-  return scope.Close(Number::New(image->height));
+  info.GetReturnValue().Set(Number::New(isolate, image->height));
 }
 
 int
