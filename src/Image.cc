@@ -33,7 +33,7 @@ Image::Initialize(Local<Object> target)
   Local<FunctionTemplate> constructor = FunctionTemplate::New(isolate, Image::New);
   constructor->InstanceTemplate()->SetInternalFieldCount(1);
   constructor->SetClassName(String::NewFromUtf8(isolate, "Image"));
-
+  
   // Prototype
   Local<ObjectTemplate> proto = constructor->PrototypeTemplate();
 
@@ -63,7 +63,7 @@ void Image::New(const FunctionCallbackInfo<Value> &args)
   image->Wrap(args.This());
 
   if (args.Length() < 1) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "epeg.image.new - Must pass data or path")));
     return;
   }
 
@@ -83,15 +83,22 @@ void Image::New(const FunctionCallbackInfo<Value> &args)
       image->im = epeg_memory_open(buffer, size);
     }
     else {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+          "[!] epeg.image.new - Invalid arguents. Must pass data or path")));
       return;
     }
 
     if (!image->im) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Cannot create image")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.new - Failed to create image")));
       return;
     }
     epeg_size_get(image->im, &(image->width), &(image->height));
+    
+    
+    // Flags must start false
+    image->cropped = false;
+    image->scaled = false;
+
   }
 }
 
@@ -105,14 +112,15 @@ Image::Process(const FunctionCallbackInfo<Value> &args)
 
   Image * image = ObjectWrap::Unwrap<Image>(args.This());
   if (!image->im) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+                 "[!] epeg.image.process() - Image was null. Task may already be finished?")));
     return;
   }
 
   epeg_memory_output_set(image->im, &data, &size);
 
   if (image->ProcessInternal() != 0) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Could not save to buffer")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.process - Could not save to buffer")));
     return;
   }
 
@@ -132,12 +140,14 @@ Image::SaveTo(const FunctionCallbackInfo<Value> &args)
 
   Image * image = ObjectWrap::Unwrap<Image>(args.This());
   if (!image->im) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+                  "[!] epeg.image.saveTo - Image was null. Task may already be finished?")));
     return;
   }
 
   if (!args[0]->IsString()) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+                  "[!] epeg.image.saveTo - Arg1 must be string path to save")));
     return;
   }
   String::Utf8Value output_file(args[0]->ToString());
@@ -145,7 +155,7 @@ Image::SaveTo(const FunctionCallbackInfo<Value> &args)
   epeg_file_output_set(image->im, *output_file);
 
   if (image->ProcessInternal() != 0) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Could not save to file")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.saveTo - Could not save to file")));
     return;
   }
 
@@ -161,17 +171,19 @@ Image::Downsize(const FunctionCallbackInfo<Value>& args)
     Isolate* isolate = args.GetIsolate();
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
-    // if (image->scaled || image->croped) {
+    // if (image->scaled || image->cropped) {
     //   ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
     //   return;
     // }
     if (args.Length() < 2) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+             "[!] epeg.image.downsize - Downsize expects two arguments!")));
       return;
     }
 
     if (!args[0]->IsInt32() || !args[1]->IsInt32()) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
+             "[!] epeg.image.downsize - Downsize arguments must be integers! (Int32)!")));
       return;
     }
 
@@ -179,7 +191,8 @@ Image::Downsize(const FunctionCallbackInfo<Value>& args)
     int height = args[1]->Int32Value();
     if (width < 0 || width > image->width ||
         height < 0 || height > image->height) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
+             "[!] epeg.image.downsize - Argument discrepancy! new height/width must be less than old height/width and non-negative!")));
       return;
     }
 
@@ -202,12 +215,18 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
 
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
-    if (image->scaled || image->croped) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Image already updated")));
+    if (image->scaled) {
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+             "[!] epeg.image.crop - Image has already been scaled. So we can't crop. Get buffer with .process() and make new Image")));
+      return;
+    } else if (image->cropped) {
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+             "[!] epeg.image.crop - Image has already been cropped. So we can't crop. Get buffer with .process() and make new Image")));
       return;
     }
     if (args.Length() < 4) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+              "[!] epeg.image.crop - Four arguments must be passed to crop: (startX, startY, newWidth, newHeight)")));
       return;
     }
 
@@ -215,7 +234,8 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
         !args[1]->IsInt32() ||
         !args[2]->IsInt32() ||
         !args[3]->IsInt32()) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
+              "[!] epeg.image.crop - Arguments to crop must be integers. (Int32)")));
       return;
     }
 
@@ -227,7 +247,8 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
 
     if (x < 0 || y < 0 || width < 0 || height < 0 ||
         (x + width) > image->width || (y + height) > image->height) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+               "[!] epeg.image.crop - Discrepancy! Trying to crop outside bounds (or negative argument passed?)")));
       return;
     }
 
@@ -238,7 +259,7 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
     epeg_quality_set(image->im, quality);
     epeg_decode_bounds_set(image->im, x, y, width, height);
 
-    image->croped = true;
+    image->cropped = true;
     args.GetReturnValue().Set(args.This());
 }
 
@@ -266,7 +287,7 @@ Image::ProcessInternal()
   if (scaled) {
     return epeg_encode(im);
   }
-  else if (croped) {
+  else if (cropped) {
     return epeg_trim(im);
   }
 }

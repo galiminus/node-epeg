@@ -35,7 +35,7 @@ class Image: public node::ObjectWrap {
   int           height;
 
   bool          scaled;
-  bool          croped;
+  bool          cropped;
 };
 
 #endif /* __EPEG_IMAGE_H__ */
