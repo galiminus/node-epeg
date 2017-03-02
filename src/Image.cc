@@ -2,6 +2,7 @@
 #include <node.h>
 #include <node_buffer.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "Epeg.h"
@@ -129,7 +130,7 @@ Image::Process(const FunctionCallbackInfo<Value> &args)
 
   Local<Value> buffer = node::Buffer::New(isolate, size).ToLocalChecked();
   memcpy(node::Buffer::Data(buffer), data, size);
-
+  free(data); 
   args.GetReturnValue().Set(buffer);
 }
 
