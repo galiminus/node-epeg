@@ -15,14 +15,14 @@ class Image: public node::ObjectWrap {
   static Persistent<FunctionTemplate> constructor;
   static void Initialize(Handle<Object>);
 
-  static Handle<Value> New(const Arguments &args);
-  static Handle<Value> Downsize(const Arguments &args);
-  static Handle<Value> Crop(const Arguments &args);
-  static Handle<Value> Process(const Arguments &args);
-  static Handle<Value> SaveTo(const Arguments &args);
+  static void New(const FunctionCallbackInfo<Value> &args);
+  static void Downsize(const FunctionCallbackInfo<Value> &args);
+  static void Crop(const FunctionCallbackInfo<Value> &args);
+  static void Process(const FunctionCallbackInfo<Value> &args);
+  static void SaveTo(const FunctionCallbackInfo<Value> &args);
 
-  static Handle<Value> GetWidth(Local<String> prop, const AccessorInfo &info);
-  static Handle<Value> GetHeight(Local<String> prop, const AccessorInfo &info);
+  static void GetWidth(Local<String> prop, const PropertyCallbackInfo<Value> &info);
+  static void GetHeight(Local<String> prop, const PropertyCallbackInfo<Value> &info);
 
   Image();
 
@@ -35,7 +35,7 @@ class Image: public node::ObjectWrap {
   int           height;
 
   bool          scaled;
-  bool          croped;
+  bool          cropped;
 };
 
 #endif /* __EPEG_IMAGE_H__ */
